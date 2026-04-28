@@ -13,6 +13,7 @@ import {
   ListMusic,
   Music,
 } from 'lucide-react'
+import { getAudioElement } from '@/lib/audioRef'
 
 const BARS = Array.from({ length: 32 }, (_, i) => ({
   height: 20 + ((i * 13 + 7) % 40),
@@ -61,7 +62,7 @@ export default function MusicPopup() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center pb-20"
+      className="fixed inset-0 z-50 flex items-end justify-center pb-50"
       onClick={() => setMusicPopupOpen(false)}
     >
       {/* Backdrop */}
@@ -184,6 +185,26 @@ export default function MusicPopup() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="relative z-10 px-8 pt-3">
+          <input
+            type="range"
+            min={0}
+            max={duration || 1}
+            step={0.1}
+            value={currentTime}
+            onChange={(e) => {
+              const t = parseFloat(e.target.value)
+              const audio = getAudioElement()
+              if (audio) audio.currentTime = t
+            }}
+            className="w-full h-1 appearance-none rounded-full cursor-pointer accent-cyan-400"
+            style={{
+              background: `linear-gradient(to right, rgb(34 211 238) ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.15) 0%)`,
+            }}
+          />
         </div>
 
         {/* Bottom bar: waveform + controls */}
