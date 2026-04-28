@@ -1,6 +1,7 @@
 'use client'
 
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { Track } from '@/types'
 
 interface PlayerStore {
@@ -36,7 +37,9 @@ interface PlayerStore {
   toggleLike: (id: string) => void
 }
 
-export const usePlayerStore = create<PlayerStore>((set, get) => ({
+export const usePlayerStore = create<PlayerStore>()(
+  persist(
+    (set, get) => ({
   playlist: [],
   queue: [],
   history: [],
@@ -130,4 +133,17 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
         ? state.likedTrackIds.filter((x) => x !== id)
         : [...state.likedTrackIds, id],
     })),
-}))
+    }),
+    {
+      name: 'nhac-player',
+      partialize: (state) => ({
+        playlist: state.playlist,
+        queue: state.queue,
+        history: state.history,
+        currentTrack: state.currentTrack,
+        likedTrackIds: state.likedTrackIds,
+        volume: state.volume,
+      }),
+    }
+  )
+)
