@@ -96,13 +96,20 @@ export default function MusicPopup() {
         <div className="relative z-10 flex flex-1 min-h-0 gap-0">
           {/* Left panel */}
           <div className="w-[42%] flex flex-col justify-center px-8 py-6 gap-4 flex-shrink-0">
+            <div>
+              <h2 className="italic text-xl font-medium text-gray-200 tracking-wide">
+                🎶 Mỗi ngày một bản nhạc hay
+              </h2>
+            </div>
+            <div></div>
+            <div></div>
             {/* Title + artist */}
             <div>
               <h2 className="text-3xl font-bold text-white leading-tight drop-shadow-lg">
-                《{currentTrack?.title ?? 'Chưa chọn bài'}》
+                {currentTrack?.title ?? 'Chưa chọn bài'}
               </h2>
               {currentTrack?.artist && (
-                <p className="text-base text-zinc-300 mt-1">— {currentTrack.artist}</p>
+                <p className="text-base text-zinc-300 mt-1">{currentTrack.artist}</p>
               )}
             </div>
 

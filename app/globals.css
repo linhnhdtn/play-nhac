@@ -150,7 +150,7 @@
 }
 
 .vinyl-spin {
-  animation: vinylSpin 6s linear infinite;
+  animation: vinylSpin 20s linear infinite;
 }
 
 .vinyl-spin-paused {
