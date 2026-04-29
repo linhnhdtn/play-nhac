@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePlayerStore } from '@/store/playerStore'
 import { formatTime } from '@/lib/utils'
 import {
@@ -42,7 +42,6 @@ export default function MusicPopup() {
 
   const {
     isRecording,
-    recordingTime,
     recordedBlob,
     startRecording,
     stopRecording,
@@ -50,8 +49,17 @@ export default function MusicPopup() {
     clearRecording,
   } = useRecorder()
 
-  const fmtRecTime = (s: number) =>
-    `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`
+  // Scale the 880×460 popup to fill the viewport while preserving aspect ratio.
+  // Pure CSS transform — internal layout, fonts, vinyl disc all scale proportionally.
+  const [popupScale, setPopupScale] = useState(1)
+  useEffect(() => {
+    const calc = () => {
+      setPopupScale(Math.min(window.innerWidth / 880, window.innerHeight / 460))
+    }
+    calc()
+    window.addEventListener('resize', calc)
+    return () => window.removeEventListener('resize', calc)
+  }, [])
 
   const lyricsRef = useRef<HTMLDivElement>(null)
   const lyrics = currentTrack?.lyrics ?? []
@@ -88,15 +96,16 @@ export default function MusicPopup() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center pb-50"
+      className="fixed inset-0 z-50 flex items-center justify-center"
       onClick={handleClose}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
-      {/* Popup */}
+      {/* Popup — scaled to fill viewport */}
       <div
-        className="relative w-[880px] h-[460px] rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+        className="relative w-[880px] h-[460px] overflow-hidden shadow-2xl flex flex-col"
+        style={{ transform: `scale(${popupScale})`, transformOrigin: 'center' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Background: blurred cover art */}
@@ -110,16 +119,6 @@ export default function MusicPopup() {
         )}
         {/* Dark overlay */}
         <div className="absolute inset-0 bg-black/55" />
-
-        {/* Recording indicator (top-left) */}
-        {isRecording && (
-          <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 px-2.5 h-8 rounded-full bg-black/40 backdrop-blur-sm">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-xs font-mono text-red-400 tabular-nums">
-              {fmtRecTime(recordingTime)}
-            </span>
-          </div>
-        )}
 
         {/* Toolbar (top-right) */}
         <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5">
