@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default function TrackItem({ track }: Props) {
-  const { currentTrack, isPlaying, playTrack, addToQueue, removeTrack } =
+  const { currentTrack, isPlaying, playTrack, addToQueue, removeTrack, setMusicPopupOpen } =
     usePlayerStore()
 
   const isActive = currentTrack?.id === track.id
@@ -60,7 +60,10 @@ export default function TrackItem({ track }: Props) {
           size="icon"
           className="w-7 h-7 text-zinc-400 hover:text-white"
           title="Phát ngay"
-          onClick={() => playTrack(track)}
+          onClick={() => {
+            playTrack(track)
+            setMusicPopupOpen(true)
+          }}
         >
           <Play className="w-3.5 h-3.5" />
         </Button>
