@@ -20,6 +20,102 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Database — Drizzle ORM + SQLite
+
+Project dùng **Drizzle ORM** với **better-sqlite3** làm database layer.
+
+### Cài đặt
+
+```bash
+npm install drizzle-orm better-sqlite3
+npm install -D drizzle-kit @types/better-sqlite3
+```
+
+### Cấu hình (`drizzle.config.ts`)
+
+```ts
+import { defineConfig } from 'drizzle-kit'
+
+export default defineConfig({
+  schema: './db/schema.ts',
+  out: './drizzle',
+  dialect: 'sqlite',
+  dbCredentials: {
+    url: './nhac.db',
+  },
+})
+```
+
+### Kết nối DB (`db/index.ts`)
+
+```ts
+import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import * as schema from './schema'
+
+const sqlite = new Database('./nhac.db')
+export const db = drizzle(sqlite, { schema })
+```
+
+### Định nghĩa schema (`db/schema.ts`)
+
+```ts
+import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
+
+export const tracks = sqliteTable('tracks', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  artist: text('artist'),
+  mediaType: text('media_type', { enum: ['mp3', 'mp4', 'youtube'] }).notNull(),
+  src: text('src').notNull(),
+  coverUrl: text('cover_url'),
+  duration: real('duration'),
+  lyrics: text('lyrics'),
+  createdAt: integer('created_at').default(sql`(unixepoch())`),
+})
+```
+
+### Các lệnh hay dùng
+
+| Lệnh | Mô tả |
+|------|-------|
+| `npm run db:push` | Đồng bộ schema xuống database (không cần migration file) |
+| `npm run db:studio` | Mở Drizzle Studio — UI xem/sửa dữ liệu tại `https://local.drizzle.studio` |
+
+### Ví dụ query
+
+```ts
+import { db } from '@/db'
+import { tracks } from '@/db/schema'
+import { eq } from 'drizzle-orm'
+
+// Lấy tất cả tracks
+const all = await db.select().from(tracks)
+
+// Lấy theo id
+const one = await db.select().from(tracks).where(eq(tracks.id, 'abc123')).get()
+
+// Thêm mới
+await db.insert(tracks).values({ id: '...', title: 'Bài hát', mediaType: 'mp3', src: '/uploads/...' })
+
+// Cập nhật
+await db.update(tracks).set({ title: 'Tên mới' }).where(eq(tracks.id, 'abc123'))
+
+// Xoá
+await db.delete(tracks).where(eq(tracks.id, 'abc123'))
+```
+
+### Workflow thêm bảng mới
+
+1. Định nghĩa bảng trong `db/schema.ts`
+2. Chạy `npm run db:push` để tạo bảng trong `nhac.db`
+3. Import và dùng trong API routes
+
+> **Lưu ý:** Project này khởi tạo bảng bằng `sqlite.exec(CREATE TABLE IF NOT EXISTS ...)` trong `db/index.ts`, nên `db:push` chỉ cần dùng khi thay đổi schema sau khi deploy.
+
+---
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
