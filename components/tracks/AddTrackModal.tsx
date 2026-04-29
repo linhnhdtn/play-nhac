@@ -14,11 +14,11 @@ import { Plus, Upload, Link } from 'lucide-react'
 import { usePlayerStore } from '@/store/playerStore'
 import { parseLrcFile } from '@/lib/lrc-parser'
 import { extractYouTubeId } from '@/lib/youtube'
-import { generateId } from '@/lib/utils'
-import { Track } from '@/types'
+import { api } from '@/lib/api'
 
 export default function AddTrackModal() {
   const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
   const { addTrack } = usePlayerStore()
 
   // File tab
@@ -38,37 +38,46 @@ export default function AddTrackModal() {
 
   const handleAddFile = async () => {
     if (!audioFile) return
-    const src = URL.createObjectURL(audioFile)
-    const ext = audioFile.name.split('.').pop()?.toLowerCase() ?? 'mp3'
-    const lyrics = lrcFile ? await parseLrcFile(lrcFile) : undefined
-    const coverUrl = coverFile ? URL.createObjectURL(coverFile) : undefined
-    const track: Track = {
-      id: generateId(),
-      title: title || audioFile.name.replace(/\.[^.]+$/, ''),
-      artist: artist || undefined,
-      mediaType: ext === 'mp4' ? 'mp4' : 'mp3',
-      src,
-      lyrics,
-      coverUrl,
+    setLoading(true)
+    try {
+      const ext = audioFile.name.split('.').pop()?.toLowerCase() ?? 'mp3'
+      const lyrics = lrcFile ? await parseLrcFile(lrcFile) : undefined
+
+      const formData = new FormData()
+      formData.set('mediaType', ext === 'mp4' ? 'mp4' : 'mp3')
+      formData.set('title', title || audioFile.name.replace(/\.[^.]+$/, ''))
+      if (artist) formData.set('artist', artist)
+      formData.set('audio', audioFile)
+      if (coverFile) formData.set('cover', coverFile)
+      if (lyrics) formData.set('lyrics', JSON.stringify(lyrics))
+
+      const track = await api.tracks.add(formData)
+      addTrack(track)
+      resetFile()
+      setOpen(false)
+    } finally {
+      setLoading(false)
     }
-    addTrack(track)
-    resetFile()
-    setOpen(false)
   }
 
-  const handleAddYT = () => {
+  const handleAddYT = async () => {
     const videoId = extractYouTubeId(ytUrl)
     if (!videoId) return alert('URL YouTube không hợp lệ')
-    const track: Track = {
-      id: generateId(),
-      title: ytTitle || `YouTube: ${videoId}`,
-      artist: ytArtist || undefined,
-      mediaType: 'youtube',
-      src: videoId,
+    setLoading(true)
+    try {
+      const formData = new FormData()
+      formData.set('mediaType', 'youtube')
+      formData.set('title', ytTitle || `YouTube: ${videoId}`)
+      if (ytArtist) formData.set('artist', ytArtist)
+      formData.set('youtubeId', videoId)
+
+      const track = await api.tracks.add(formData)
+      addTrack(track)
+      resetYT()
+      setOpen(false)
+    } finally {
+      setLoading(false)
     }
-    addTrack(track)
-    resetYT()
-    setOpen(false)
   }
 
   const resetFile = () => {
@@ -166,9 +175,9 @@ export default function AddTrackModal() {
             <Button
               className="w-full"
               onClick={handleAddFile}
-              disabled={!audioFile}
+              disabled={!audioFile || loading}
             >
-              Thêm vào thư viện
+              {loading ? 'Đang tải...' : 'Thêm vào thư viện'}
             </Button>
           </TabsContent>
 
@@ -197,9 +206,9 @@ export default function AddTrackModal() {
             <Button
               className="w-full"
               onClick={handleAddYT}
-              disabled={!ytUrl}
+              disabled={!ytUrl || loading}
             >
-              Thêm vào thư viện
+              {loading ? 'Đang thêm...' : 'Thêm vào thư viện'}
             </Button>
           </TabsContent>
         </Tabs>

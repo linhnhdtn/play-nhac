@@ -1,8 +1,8 @@
 'use client'
 
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import { Track } from '@/types'
+import { api } from '@/lib/api'
 
 interface PlayerStore {
   playlist: Track[]
@@ -18,6 +18,7 @@ interface PlayerStore {
   isMusicPopupOpen: boolean
   likedTrackIds: string[]
 
+  initialize: () => Promise<void>
   setPlaylist: (tracks: Track[]) => void
   addTrack: (track: Track) => void
   removeTrack: (id: string) => void
@@ -35,11 +36,10 @@ interface PlayerStore {
   setPlayerModalOpen: (open: boolean) => void
   setMusicPopupOpen: (open: boolean) => void
   toggleLike: (id: string) => void
+  updateTrack: (track: Track) => void
 }
 
-export const usePlayerStore = create<PlayerStore>()(
-  persist(
-    (set, get) => ({
+export const usePlayerStore = create<PlayerStore>()((set, get) => ({
   playlist: [],
   queue: [],
   history: [],
@@ -53,25 +53,49 @@ export const usePlayerStore = create<PlayerStore>()(
   isMusicPopupOpen: false,
   likedTrackIds: [],
 
+  initialize: async () => {
+    const [tracksData, queueData, historyData] = await Promise.all([
+      api.tracks.getAll(),
+      api.queue.getAll(),
+      api.history.getAll(),
+    ])
+    set({
+      playlist: tracksData.tracks,
+      likedTrackIds: tracksData.likedTrackIds,
+      queue: queueData.queue,
+      history: historyData.history,
+    })
+  },
+
   setPlaylist: (tracks) => set({ playlist: tracks }),
 
   addTrack: (track) =>
     set((state) => ({ playlist: [...state.playlist, track] })),
 
-  removeTrack: (id) =>
+  updateTrack: (track) =>
+    set((state) => ({
+      playlist: state.playlist.map((t) => (t.id === track.id ? track : t)),
+      currentTrack: state.currentTrack?.id === track.id ? track : state.currentTrack,
+    })),
+
+  removeTrack: (id) => {
+    api.tracks.delete(id)
     set((state) => ({
       playlist: state.playlist.filter((t) => t.id !== id),
       queue: state.queue.filter((t) => t.id !== id),
-      currentTrack:
-        state.currentTrack?.id === id ? null : state.currentTrack,
-    })),
+      currentTrack: state.currentTrack?.id === id ? null : state.currentTrack,
+    }))
+  },
 
   playTrack: (track) => {
     const state = get()
     if (state.currentTrack && state.currentTrack.id !== track.id) {
+      api.history.add(track.id)
       set((s) => ({
         history: [s.currentTrack!, ...s.history.filter((h) => h.id !== s.currentTrack!.id)].slice(0, 50),
       }))
+    } else if (!state.currentTrack) {
+      api.history.add(track.id)
     }
     set({ currentTrack: track, isPlaying: true, currentTime: 0 })
   },
@@ -79,13 +103,12 @@ export const usePlayerStore = create<PlayerStore>()(
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
 
   next: () => {
-    const { queue, playlist, currentTrack, history } = get()
+    const { queue, playlist, currentTrack } = get()
     if (queue.length > 0) {
       const [next, ...rest] = queue
       if (currentTrack) {
-        set((s) => ({
-          history: [currentTrack, ...s.history].slice(0, 50),
-        }))
+        api.queue.remove(next.id)
+        set((s) => ({ history: [currentTrack, ...s.history].slice(0, 50) }))
       }
       set({ currentTrack: next, queue: rest, isPlaying: true, currentTime: 0 })
       return
@@ -93,11 +116,7 @@ export const usePlayerStore = create<PlayerStore>()(
     if (!currentTrack || playlist.length === 0) return
     const idx = playlist.findIndex((t) => t.id === currentTrack.id)
     const next = playlist[(idx + 1) % playlist.length]
-    if (currentTrack) {
-      set((s) => ({
-        history: [currentTrack, ...s.history].slice(0, 50),
-      }))
-    }
+    set((s) => ({ history: [currentTrack, ...s.history].slice(0, 50) }))
     set({ currentTrack: next, isPlaying: true, currentTime: 0 })
   },
 
@@ -114,11 +133,15 @@ export const usePlayerStore = create<PlayerStore>()(
     set({ currentTrack: prev, isPlaying: true, currentTime: 0 })
   },
 
-  addToQueue: (track) =>
-    set((state) => ({ queue: [...state.queue, track] })),
+  addToQueue: (track) => {
+    api.queue.add(track.id)
+    set((state) => ({ queue: [...state.queue, track] }))
+  },
 
-  removeFromQueue: (id) =>
-    set((state) => ({ queue: state.queue.filter((t) => t.id !== id) })),
+  removeFromQueue: (id) => {
+    api.queue.remove(id)
+    set((state) => ({ queue: state.queue.filter((t) => t.id !== id) }))
+  },
 
   setCurrentTime: (t) => set({ currentTime: t }),
   setDuration: (d) => set({ duration: d }),
@@ -127,23 +150,13 @@ export const usePlayerStore = create<PlayerStore>()(
   setActiveView: (view) => set({ activeView: view }),
   setPlayerModalOpen: (open) => set({ isPlayerModalOpen: open }),
   setMusicPopupOpen: (open) => set({ isMusicPopupOpen: open }),
-  toggleLike: (id) =>
+
+  toggleLike: (id) => {
+    api.tracks.toggleLike(id)
     set((state) => ({
       likedTrackIds: state.likedTrackIds.includes(id)
         ? state.likedTrackIds.filter((x) => x !== id)
         : [...state.likedTrackIds, id],
-    })),
-    }),
-    {
-      name: 'nhac-player',
-      partialize: (state) => ({
-        playlist: state.playlist,
-        queue: state.queue,
-        history: state.history,
-        currentTrack: state.currentTrack,
-        likedTrackIds: state.likedTrackIds,
-        volume: state.volume,
-      }),
-    }
-  )
-)
+    }))
+  },
+}))

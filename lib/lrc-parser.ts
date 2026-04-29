@@ -1,5 +1,14 @@
 import { LyricLine } from '@/types'
 
+export function lyricsToLrc(lyrics: LyricLine[]): string {
+  return lyrics.map((line) => {
+    const mm = Math.floor(line.time / 60)
+    const ss = Math.floor(line.time % 60)
+    const cs = Math.round((line.time % 1) * 100)
+    return `[${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}.${String(cs).padStart(2, '0')}]${line.text}`
+  }).join('\n')
+}
+
 const LRC_LINE_RE = /\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/
 
 export function parseLrc(text: string): LyricLine[] {
