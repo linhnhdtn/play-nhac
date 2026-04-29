@@ -12,8 +12,12 @@ import {
   Heart,
   ListMusic,
   Music,
+  Video,
+  Square,
+  Download,
 } from 'lucide-react'
 import { getAudioElement } from '@/lib/audioRef'
+import { useRecorder } from '@/hooks/useRecorder'
 
 const BARS = Array.from({ length: 32 }, (_, i) => ({
   height: 20 + ((i * 13 + 7) % 40),
@@ -35,6 +39,19 @@ export default function MusicPopup() {
     likedTrackIds,
     toggleLike,
   } = usePlayerStore()
+
+  const {
+    isRecording,
+    recordingTime,
+    recordedBlob,
+    startRecording,
+    stopRecording,
+    downloadRecording,
+    clearRecording,
+  } = useRecorder()
+
+  const fmtRecTime = (s: number) =>
+    `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`
 
   const lyricsRef = useRef<HTMLDivElement>(null)
   const lyrics = currentTrack?.lyrics ?? []
@@ -60,10 +77,19 @@ export default function MusicPopup() {
 
   const isLiked = currentTrack ? likedTrackIds.includes(currentTrack.id) : false
 
+  const handleClose = () => {
+    if (isRecording) {
+      stopRecording()
+      return
+    }
+    clearRecording()
+    setMusicPopupOpen(false)
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center pb-50"
-      onClick={() => setMusicPopupOpen(false)}
+      onClick={handleClose}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
@@ -85,13 +111,58 @@ export default function MusicPopup() {
         {/* Dark overlay */}
         <div className="absolute inset-0 bg-black/55" />
 
-        {/* Close button */}
-        <button
-          onClick={() => setMusicPopupOpen(false)}
-          className="absolute top-4 right-4 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        {/* Recording indicator (top-left) */}
+        {isRecording && (
+          <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 px-2.5 h-8 rounded-full bg-black/40 backdrop-blur-sm">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-xs font-mono text-red-400 tabular-nums">
+              {fmtRecTime(recordingTime)}
+            </span>
+          </div>
+        )}
+
+        {/* Toolbar (top-right) */}
+        <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5">
+          {recordedBlob && !isRecording && (
+            <button
+              onClick={downloadRecording}
+              title="Tải video"
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            onClick={() => {
+              if (isRecording) {
+                stopRecording()
+              } else {
+                clearRecording()
+                startRecording()
+              }
+            }}
+            disabled={!currentTrack}
+            title={isRecording ? 'Dừng quay' : 'Quay video'}
+            className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors disabled:opacity-40 ${
+              isRecording
+                ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400'
+                : 'bg-white/10 hover:bg-white/20 text-white'
+            }`}
+          >
+            {isRecording ? (
+              <Square className="w-4 h-4 fill-current" />
+            ) : (
+              <Video className="w-4 h-4" />
+            )}
+          </button>
+          <button
+            onClick={handleClose}
+            title={isRecording ? 'Dừng quay' : 'Đóng'}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
         {/* Main content */}
         <div className="relative z-10 flex flex-1 min-h-0 gap-0">

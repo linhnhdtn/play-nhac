@@ -39,8 +39,7 @@ export default function PlayerModal() {
 
   const prevVolumeRef = useRef(0.8)
 
-  const popupRef = useRef<HTMLDivElement>(null)
-  const { isRecording, recordingTime, recordedBlob, startRecording, stopRecording, downloadRecording, clearRecording } = useRecorder(popupRef)
+  const { isRecording, recordingTime, recordedBlob, startRecording, stopRecording, downloadRecording, clearRecording } = useRecorder()
 
   const fmtRecTime = (s: number) =>
     `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`
@@ -82,7 +81,6 @@ export default function PlayerModal() {
       onClick={() => setPlayerModalOpen(false)}
     >
       <div
-        ref={popupRef}
         className="relative w-[390px] h-[780px] rounded-[3rem] overflow-hidden flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
