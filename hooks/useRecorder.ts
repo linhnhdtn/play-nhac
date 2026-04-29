@@ -93,6 +93,8 @@ export function useRecorder(): UseRecorderReturn {
         // no effect (constraint is ideal, not min/max).
         width: { ideal: 2560 },
         height: { ideal: 1440 },
+        // Hide the mouse cursor in the recording
+        cursor: 'never',
       },
       audio: true,
       preferCurrentTab: true,
@@ -192,6 +194,20 @@ export function useRecorder(): UseRecorderReturn {
       }
     }
   }, [cleanup])
+
+  // Hide mouse cursor across the page while recording. Some Chrome builds
+  // ignore the `cursor: 'never'` getDisplayMedia hint, so we also force it
+  // via CSS — Chrome's tab capture honors CSS cursor on the page.
+  useEffect(() => {
+    if (!isRecording) return
+    const style = document.createElement('style')
+    style.setAttribute('data-recorder-hide-cursor', '')
+    style.textContent = '*, *::before, *::after { cursor: none !important; }'
+    document.head.appendChild(style)
+    return () => {
+      style.remove()
+    }
+  }, [isRecording])
 
   return { isRecording, recordingTime, recordedBlob, startRecording, stopRecording, downloadRecording, clearRecording }
 }
